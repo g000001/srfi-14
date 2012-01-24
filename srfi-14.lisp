@@ -71,6 +71,9 @@
 ;;; See the end of the file for porting and performance-tuning notes.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defvar char-set..empty)
+(defvar char-set..full)
+
 (defmacro check-arg (pred val caller)
   `(when (not (,pred ,val))
      (error ,val '(function ,caller))))
@@ -647,8 +650,8 @@
 ;;; as immutable, you should do so -- it would be very, very bad if a client's
 ;;; buggy code corrupted these constants.
 
-(defvar char-set..empty (char-set))
-(defvar char-set..full (char-set-complement char-set..empty))
+(setq char-set..empty (char-set))
+(setq char-set..full (char-set-complement char-set..empty))
 
 (defvar char-set..lower-case
   (let* ((a-z (ucs-range->char-set #x61 #x7B))
