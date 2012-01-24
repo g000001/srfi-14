@@ -75,8 +75,11 @@
 (defvar char-set..full)
 
 (defmacro check-arg (pred val caller)
-  `(when (not (,pred ,val))
-     (error ,val '(function ,caller))))
+  (let ((gval (gensym)))
+    `(let ((,gval ,val))
+       (if (not (,pred ,val))
+           (error ,gval '(function ,caller))
+           ,gval))))
 
 (defmacro check-arg-local (pred val caller)
   `(when (not (funcall ,pred ,val))
