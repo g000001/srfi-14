@@ -86,7 +86,7 @@
      (error ,val '(function ,caller))))
 
 (defun %latin1->char (num)
-  (declare ((integer 0 255) num))
+  (declare (type (integer 0 255) num))
   (code-char num))                      ;utf-8!
 
 (defun %char->latin1 (char)
