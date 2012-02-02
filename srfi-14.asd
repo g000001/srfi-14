@@ -4,7 +4,7 @@
 
 (defsystem :srfi-14
   :serial t
-  :depends-on (:srfi-9)
+  :depends-on (:srfi-5 :srfi-9 :srfi-23)
   :components ((:file "package")
                (:file "util")
                (:file "srfi-14")
