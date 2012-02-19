@@ -90,13 +90,17 @@
   (code-char num))                      ;utf-8!
 
 (defun %char->latin1 (char)
-  (declare (values (integer 0 255)))
-  (char-code char))
+  (the (integer 0 255)
+    (char-code char)))
 
-(define-record-type :char-set
+(define-record-type char-set
   (make-char-set s)
   char-set?
   (s char-set..s))
+
+(defmethod make-load-form ((self char-set) &optional environment)
+  (declare (ignore environment))
+  `(make-char-set ,(char-set..s self)))
 
 (defun %string-copy (s)
   (copy-seq s))
