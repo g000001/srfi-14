@@ -8,7 +8,8 @@
                `(progn
                   ,@(mapcar (lambda (x)
                               `(defconst ,(intern (string x) :char-set)
-                                 ,(intern (format nil "CHAR-SET..~A" x)) ))
+                                 ,(intern (concatenate 'string (string '#:CHAR-SET..)
+                                                               (string x)))))
                             syms ))))
   (def :lower-case  :upper-case  :title-case
        :letter      :digit       :letter+digit
