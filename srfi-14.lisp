@@ -1,6 +1,6 @@
 ;;;; srfi-14.lisp
 
-(cl:in-package :srfi-14-internal)
+(cl:in-package "https://github.com/g000001/srfi-14#internals")
 
 ;;; SRFI-14 character-sets library				-*- Scheme -*-
 ;;;
@@ -73,8 +73,8 @@
 
 (defvar char-set-char-code-limit #.(cl:ash cl:char-code-limit -2))
 
-(defvar char-set..empty)
-(defvar char-set..full)
+(defvar char-set$empty)
+(defvar char-set$full)
 
 (defmacro check-arg (pred val caller)
   (let ((gval (gensym)))
@@ -88,8 +88,8 @@
      (error ,val '(function ,caller))))
 
 (defun %latin1->char (num)
-  #|(declare (type (integer 0 255) num))|#
-  (code-char num))                      ;utf-8!
+  (declare (type (integer 0 #.char-code-limit) num))
+  (code-char num))
 
 (defun %code->char (num)
   (declare (type (integer 0 255) num))
@@ -105,7 +105,7 @@
 (define-record-type char-set
   (make-char-set s)
   char-set?
-  (s char-set..s))
+  (s char-set$s))
 
 (cl:defmethod print-object ((o char-set) stream)
   (print-unreadable-object (o stream :identity t)
@@ -114,7 +114,7 @@
 
 (defmethod make-load-form ((self char-set) &optional environment)
   (declare (ignore environment))
-  `(make-char-set ,(char-set..s self)))
+  `(make-char-set ,(char-set$s self)))
 
 (defun %string-copy (s)
   (copy-seq s))
@@ -129,7 +129,7 @@
       (let ((bcs  (car maybe-base))
 	    (tail (cdr maybe-base)))
 	(if (null? tail)
-	    (if (char-set? bcs) (%string-copy (char-set..s bcs))
+	    (if (char-set? bcs) (%string-copy (char-set$s bcs))
 		(error "BASE-CS parameter not a char-set" proc bcs))
 	    (error "Expected final base char set -- too many parameters"
 		   proc maybe-base)))
@@ -137,13 +137,13 @@
       ;; kluge
       (make-string char-set-char-code-limit (%code->char 0))))
 
-;;; If CS is really a char-set, do CHAR-SET..S, otw report an error msg on
+;;; If CS is really a char-set, do CHAR-SET$S, otw report an error msg on
 ;;; behalf of our caller, PROC. This procedure exists basically to provide
 ;;; explicit error-checking & reporting.
 
-(define-function (%char-set..s/check cs proc)
+(define-function (%char-set$s/check cs proc)
   (let lp ((cs cs))
-    (if (char-set? cs) (char-set..s cs)
+    (if (char-set? cs) (char-set$s cs)
 	(lp (error "Not a char-set" cs proc)))))
 
 
@@ -173,25 +173,25 @@
 
 
 (define-function (char-set-copy cs)
-  (make-char-set (%string-copy (%char-set..s/check cs #'char-set-copy))))
+  (make-char-set (%string-copy (%char-set$s/check cs #'char-set-copy))))
 
 (define-function (char-set= . rest)
   (or (null? rest)
       (let* ((cs1  (car rest))
 	     (rest (cdr rest))
-	     (s1 (%char-set..s/check cs1 #'char-set=)))
+	     (s1 (%char-set$s/check cs1 #'char-set=)))
 	(let lp ((rest rest))
 	  (or (not (pair? rest))
-	      (and (string=? s1 (%char-set..s/check (car rest) #'char-set=))
+	      (and (string=? s1 (%char-set$s/check (car rest) #'char-set=))
 		   (lp (cdr rest))))))))
 
 (define-function (char-set<= . rest)
   (or (null? rest)
       (let ((cs1  (car rest))
 	    (rest (cdr rest)))
-	(let lp ((s1 (%char-set..s/check cs1 #'char-set<=))  (rest rest))
+	(let lp ((s1 (%char-set$s/check cs1 #'char-set<=))  (rest rest))
 	  (or (not (pair? rest))
-	      (let ((s2 (%char-set..s/check (car rest) #'char-set<=))
+	      (let ((s2 (%char-set$s/check (car rest) #'char-set<=))
 		    (rest (cdr rest)))
 		(if (eq? s1 s2) (lp s2 rest)	; Fast path
 		    (let lp2 ((i 255))		; Real test
@@ -222,7 +222,7 @@
 								(exact? n)
 								(<= 0 n)))))
 	 (bound (if (zero? bound) 4194304 bound))	; 0 means default.
-	 (s (%char-set..s/check cs char-set-hash))
+	 (s (%char-set$s/check cs char-set-hash))
 	 ;; Compute a 111...1 mask that will cover BOUND-1:
 	 (mask (let lp ((i #x10000)) ; Let's skip first 16 iterations, eh?
 		 (if (>= i bound) (- i 1) (lp (+ i i))))))
@@ -234,7 +234,7 @@
 		    (bitwise-and mask (+ (* 37 ans) i))))))))|#
 
 (defun char-set-hash (cs &optional (bound 4194304))
-  (let* ((s (%char-set..s/check cs #'char-set-hash))
+  (let* ((s (%char-set$s/check cs #'char-set-hash))
 	 ;; Compute a 111...1 mask that will cover BOUND-1:
 	 (mask (let lp ((i #x10000)) ; Let's skip first 16 iterations, eh?
 		 (if (>= i bound) (- i 1) (lp (+ i i))))))
@@ -247,18 +247,18 @@
 
 
 (define-function (char-set-contains? cs char)
-  (si=1? (%char-set..s/check cs #'char-set-contains?)
+  (si=1? (%char-set$s/check cs #'char-set-contains?)
 	 (%char->code (check-arg char? char char-set-contains?))))
 
 (define-function (char-set-size cs)
-  (let ((s (%char-set..s/check cs #'char-set-size)))
+  (let ((s (%char-set$s/check cs #'char-set-size)))
     (let lp ((i 255) (size 0))
       (if (< i 0) size
 	  (lp (- i 1) (+ size (si s i)))))))
 
 (define-function (char-set-count pred cset)
   (check-arg procedure? pred char-set-count)
-  (let ((s (%char-set..s/check cset #'char-set-count)))
+  (let ((s (%char-set$s/check cset #'char-set-count)))
     (let lp ((i 255) (count 0))
       (if (< i 0) count
 	  (lp (- i 1)
@@ -270,13 +270,13 @@
 ;;; -- Adjoin & delete
 
 (define-function (%set-char-set set proc cs chars)
-  (let ((s (%string-copy (%char-set..s/check cs proc))))
+  (let ((s (%string-copy (%char-set$s/check cs proc))))
     (for-each (lambda (c) (funcall set s (%char->code c)))
 	      chars)
     (make-char-set s)))
 
 (define-function (%set-char-set! set proc cs chars)
-  (let ((s (%char-set..s/check cs proc)))
+  (let ((s (%char-set$s/check cs proc)))
     (for-each (lambda (c) (funcall set s (%char->code c)))
 	      chars))
   cs)
@@ -316,7 +316,7 @@
   (%char-set-cursor-next cset cursor #'char-set-cursor-next))
 
 (define-function (%char-set-cursor-next cset cursor proc)	; Internal
-  (let ((s (%char-set..s/check cset proc)))
+  (let ((s (%char-set$s/check cset proc)))
     (let lp ((cur cursor))
       (let ((cur (- cur 1)))
 	(if (or (< cur 0) (si=1? s cur)) cur
@@ -327,7 +327,7 @@
 
 (define-function (char-set-for-each proc cs)
   (check-arg procedure? proc char-set-for-each)
-  (let ((s (%char-set..s/check cs #'char-set-for-each)))
+  (let ((s (%char-set$s/check cs #'char-set-for-each)))
     (let lp ((i 255))
       (cond ((>= i 0)
 	     (if (si=1? s i) (funcall proc (%code->char i)))
@@ -335,7 +335,7 @@
 
 (define-function (char-set-map proc cs)
   (check-arg procedure? proc char-set-map)
-  (let ((s (%char-set..s/check cs #'char-set-map))
+  (let ((s (%char-set$s/check cs #'char-set-map))
 	(ans (make-string char-set-char-code-limit c0)))
     (let lp ((i 255))
       (cond ((>= i 0)
@@ -346,7 +346,7 @@
 
 (define-function (char-set-fold kons knil cs)
   (check-arg procedure? kons char-set-fold)
-  (let ((s (%char-set..s/check cs #'char-set-fold)))
+  (let ((s (%char-set$s/check cs #'char-set-fold)))
     (let lp ((i 255) (ans knil))
       (if (< i 0) ans
 	  (lp (- i 1)
@@ -355,7 +355,7 @@
 
 (define-function (char-set-every pred cs)
   (check-arg procedure? pred char-set-every)
-  (let ((s (%char-set..s/check cs #'char-set-every)))
+  (let ((s (%char-set$s/check cs #'char-set-every)))
     (let lp ((i 255))
       (or (< i 0)
 	  (and (or (si=0? s i) (funcall pred (%code->char i)))
@@ -363,7 +363,7 @@
 
 (define-function (char-set-any pred cs)
   (check-arg procedure? pred char-set-any)
-  (let ((s (%char-set..s/check cs #'char-set-any)))
+  (let ((s (%char-set$s/check cs #'char-set-any)))
     (let lp ((i 255))
       (and (>= i 0)
 	   (or (and (si=1? s i) (funcall pred (%code->char i)))
@@ -387,7 +387,7 @@
 
 (define-function (char-set-unfold! p f g seed base-cset)
   (%char-set-unfold! #'char-set-unfold! p f g
-		     (%char-set..s/check base-cset #'char-set-unfold!)
+		     (%char-set$s/check base-cset #'char-set-unfold!)
 		     seed)
   base-cset)
 
@@ -410,12 +410,12 @@
     (make-char-set bs)))
 
 (define-function (list->char-set! chars base-cs)
-  (%list->char-set! chars (%char-set..s/check base-cs #'list->char-set!))
+  (%list->char-set! chars (%char-set$s/check base-cs #'list->char-set!))
   base-cs)
 
 
 (define-function (char-set->list cs)
-  (let ((s (%char-set..s/check cs #'char-set->list)))
+  (let ((s (%char-set$s/check cs #'char-set->list)))
     (let lp ((i 255) (ans '()))
       (if (< i 0) ans
 	  (lp (- i 1)
@@ -439,13 +439,13 @@
     (make-char-set bs)))
 
 (define-function (string->char-set! str base-cs)
-  (%string->char-set! str (%char-set..s/check base-cs #'string->char-set!)
+  (%string->char-set! str (%char-set$s/check base-cs #'string->char-set!)
 		      #'string->char-set!)
   base-cs)
 
 
 (define-function (char-set->string cs)
-  (let* ((s (%char-set..s/check cs #'char-set->string))
+  (let* ((s (%char-set$s/check cs #'char-set->string))
 	 (ans (make-string (char-set-size cs))))
     (let lp ((i 255) (j 0))
       (if (< i 0) ans
@@ -483,7 +483,7 @@
 
 (define-function (ucs-range->char-set! lower upper error? base-cs)
   (%ucs-range->char-set! lower upper error?
-			 (%char-set..s/check base-cs #'ucs-range->char-set!)
+			 (%char-set$s/check base-cs #'ucs-range->char-set!)
 			 #'ucs-range->char-set)
   base-cs)
 
@@ -502,15 +502,15 @@
 (define-function (char-set-filter predicate domain . maybe-base)
   (let ((bs (%default-base maybe-base #'char-set-filter)))
     (%char-set-filter! predicate
-		       (%char-set..s/check domain #'char-set-filter!)
+		       (%char-set$s/check domain #'char-set-filter!)
 		       bs
 		       #'char-set-filter)
     (make-char-set bs)))
 
 (define-function (char-set-filter! predicate domain base-cs)
   (%char-set-filter! predicate
-		     (%char-set..s/check domain #'char-set-filter!)
-		     (%char-set..s/check base-cs #'char-set-filter!)
+		     (%char-set$s/check domain #'char-set-filter!)
+		     (%char-set$s/check base-cs #'char-set-filter!)
 		     #'char-set-filter!)
   base-cs)
 
@@ -521,7 +521,7 @@
   (cond ((char-set? x) x)
 	((string? x) (string->char-set x))
 	((char? x) (char-set x))
-	(:else (error "->char-set.. Not a charset, string or char." x))))
+	(:else (error "->char-set$ Not a charset, string or char." x))))
 
 
 
@@ -557,7 +557,7 @@
 
 (define-function (%char-set-algebra s csets op proc)
   (for-each (lambda (cset)
-	      (let ((s2 (%char-set..s/check cset proc)))
+	      (let ((s2 (%char-set$s/check cset proc)))
 		(let lp ((i 255))
 		  (cond ((>= i 0)
 			 (funcall op s i (si s2 i))
@@ -569,13 +569,13 @@
 ;;; -- Complement
 
 (define-function (char-set-complement cs)
-  (let ((s (%char-set..s/check cs #'char-set-complement))
+  (let ((s (%char-set$s/check cs #'char-set-complement))
 	(ans (make-string char-set-char-code-limit)))
     (%string-iter (lambda (i v) (%not! ans i v)) s)
     (make-char-set ans)))
 
 (define-function (char-set-complement! cset)
-  (let ((s (%char-set..s/check cset #'char-set-complement!)))
+  (let ((s (%char-set$s/check cset #'char-set-complement!)))
     (%string-iter (lambda (i v) (%not! s i v)) s))
   cset)
 
@@ -583,43 +583,43 @@
 ;;; -- Union
 
 (define-function (char-set-union! cset1 . csets)
-  (%char-set-algebra (%char-set..s/check cset1 #'char-set-union!)
+  (%char-set-algebra (%char-set$s/check cset1 #'char-set-union!)
 		     csets #'%or! #'char-set-union!)
   cset1)
 
 (define-function (char-set-union . csets)
   (if (pair? csets)
-      (let ((s (%string-copy (%char-set..s/check (car csets) #'char-set-union))))
+      (let ((s (%string-copy (%char-set$s/check (car csets) #'char-set-union))))
 	(%char-set-algebra s (cdr csets) #'%or! #'char-set-union)
 	(make-char-set s))
-      (char-set-copy char-set..empty)))
+      (char-set-copy char-set$empty)))
 
 
 ;;; -- Intersection
 
 (define-function (char-set-intersection! cset1 . csets)
-  (%char-set-algebra (%char-set..s/check cset1 #'char-set-intersection!)
+  (%char-set-algebra (%char-set$s/check cset1 #'char-set-intersection!)
 		     csets #'%and! #'char-set-intersection!)
   cset1)
 
 (define-function (char-set-intersection . csets)
   (if (pair? csets)
-      (let ((s (%string-copy (%char-set..s/check (car csets) #'char-set-intersection))))
+      (let ((s (%string-copy (%char-set$s/check (car csets) #'char-set-intersection))))
 	(%char-set-algebra s (cdr csets) #'%and! #'char-set-intersection)
 	(make-char-set s))
-      (char-set-copy char-set..full)))
+      (char-set-copy char-set$full)))
 
 
 ;;; -- Difference
 
 (define-function (char-set-difference! cset1 . csets)
-  (%char-set-algebra (%char-set..s/check cset1 #'char-set-difference!)
+  (%char-set-algebra (%char-set$s/check cset1 #'char-set-difference!)
 		     csets #'%minus! #'char-set-difference!)
   cset1)
 
 (define-function (char-set-difference cs1 . csets)
   (if (pair? csets)
-      (let ((s (%string-copy (%char-set..s/check cs1 #'char-set-difference))))
+      (let ((s (%string-copy (%char-set$s/check cs1 #'char-set-difference))))
 	(%char-set-algebra s csets #'%minus! #'char-set-difference)
 	(make-char-set s))
       (char-set-copy cs1)))
@@ -628,16 +628,16 @@
 ;;; -- Xor
 
 (define-function (char-set-xor! cset1 . csets)
-  (%char-set-algebra (%char-set..s/check cset1 #'char-set-xor!)
+  (%char-set-algebra (%char-set$s/check cset1 #'char-set-xor!)
 		      csets #'%xor! #'char-set-xor!)
   cset1)
 
 (define-function (char-set-xor . csets)
   (if (pair? csets)
-      (let ((s (%string-copy (%char-set..s/check (car csets) #'char-set-xor))))
+      (let ((s (%string-copy (%char-set$s/check (car csets) #'char-set-xor))))
 	(%char-set-algebra s (cdr csets) #'%xor! #'char-set-xor)
 	(make-char-set s))
-      (char-set-copy char-set..empty)))
+      (char-set-copy char-set$empty)))
 
 
 ;;; -- Difference & intersection
@@ -649,13 +649,13 @@
 				  (cond ((si=1? diff i)
 					 (%set0! diff i)
 					 (%set1! int  i)))))
-			    (%char-set..s/check cs proc)))
+			    (%char-set$s/check cs proc)))
 	    csets)
   nil)
 
 (define-function (char-set-diff+intersection! cs1 cs2 . csets)
-  (let ((s1 (%char-set..s/check cs1 #'char-set-diff+intersection!))
-	(s2 (%char-set..s/check cs2 #'char-set-diff+intersection!)))
+  (let ((s1 (%char-set$s/check cs1 #'char-set-diff+intersection!))
+	(s2 (%char-set$s/check cs2 #'char-set-diff+intersection!)))
     (%string-iter (lambda (i v) (if (zero? v)
 				    (%set0! s2 i)
 				    (if (si=1? s2 i) (%set0! s1 i))))
@@ -664,7 +664,7 @@
   (values cs1 cs2))
 
 (define-function (char-set-diff+intersection cs1 . csets)
-  (let ((diff (string-copy (%char-set..s/check cs1 #'char-set-diff+intersection)))
+  (let ((diff (string-copy (%char-set$s/check cs1 #'char-set-diff+intersection)))
 	(int  (make-string char-set-char-code-limit c0)))
     (%char-set-diff+intersection! diff int csets #'char-set-diff+intersection)
     (values (make-char-set diff) (make-char-set int))))
@@ -678,36 +678,36 @@
 ;;; as immutable, you should do so -- it would be very, very bad if a client's
 ;;; buggy code corrupted these constants.
 
-(setq char-set..empty (char-set))
-(setq char-set..full (char-set-complement char-set..empty))
+(setq char-set$empty (char-set))
+(setq char-set$full (char-set-complement char-set$empty))
 
-(defvar char-set..lower-case
+(defvar char-set$lower-case
   (let* ((a-z (ucs-range->char-set #x61 #x7B))
 	 (latin1 (ucs-range->char-set! #xdf #xf7  t a-z))
 	 (latin2 (ucs-range->char-set! #xf8 #x100 t latin1)))
     (char-set-adjoin! latin2 (%code->char #xb5))))
 
-(defvar char-set..upper-case
+(defvar char-set$upper-case
   (let ((A-Z (ucs-range->char-set #x41 #x5B)))
     ;; Add in the Latin-1 upper-case chars.
     (ucs-range->char-set! #xd8 #xdf t
 			  (ucs-range->char-set! #xc0 #xd7 t A-Z))))
 
-(defvar  char-set..title-case char-set..empty)
+(defvar  char-set$title-case char-set$empty)
 
-(defvar char-set..letter
-  (let ((u/l (char-set-union char-set..upper-case char-set..lower-case)))
+(defvar char-set$letter
+  (let ((u/l (char-set-union char-set$upper-case char-set$lower-case)))
     (char-set-adjoin! u/l
 		      (%code->char #xaa)	; FEMININE ORDINAL INDICATOR
 		      (%code->char #xba))))	; MASCULINE ORDINAL INDICATOR
 
-(defvar char-set..digit     (string->char-set "0123456789"))
-(defvar char-set..hex-digit (string->char-set "0123456789abcdefABCDEF"))
+(defvar char-set$digit     (string->char-set "0123456789"))
+(defvar char-set$hex-digit (string->char-set "0123456789abcdefABCDEF"))
 
-(defvar char-set..letter+digit
-  (char-set-union char-set..letter char-set..digit))
+(defvar char-set$letter+digit
+  (char-set-union char-set$letter char-set$digit))
 
-(defvar char-set..punctuation
+(defvar char-set$punctuation
   (let ((ascii (string->char-set "!\"#%&'()*,-./:;?@[\\]_{}"))
 	(latin-1-chars (mapcar #'%code->char '(#xA1 ; INVERTED EXCLAMATION MARK
 					    #xAB ; LEFT-POINTING DOUBLE ANGLE QUOTATION MARK
@@ -717,7 +717,7 @@
 					    #xBF)))) ; INVERTED QUESTION MARK
     (list->char-set! latin-1-chars ascii)))
 
-(defvar char-set..symbol
+(defvar char-set$symbol
   (let ((ascii (string->char-set "$+<=>^`|~"))
 	(latin-1-chars (mapcar #'%code->char '(#x00A2 ; CENT SIGN
 					    #x00A3 ; POUND SIGN
@@ -740,10 +740,10 @@
     (list->char-set! latin-1-chars ascii)))
 
 
-(defvar char-set..graphic
-  (char-set-union char-set..letter+digit char-set..punctuation char-set..symbol))
+(defvar char-set$graphic
+  (char-set-union char-set$letter+digit char-set$punctuation char-set$symbol))
 
-(defvar char-set..whitespace
+(defvar char-set$whitespace
   (list->char-set (mapcar #'%code->char '(#x09 ; HORIZONTAL TABULATION
 				       #x0A ; LINE FEED
 				       #x0B ; VERTICAL TABULATION
@@ -752,18 +752,18 @@
 				       #x20 ; SPACE
 				       #xA0))))
 
-(defvar char-set..printing (char-set-union char-set..whitespace char-set..graphic)) ; NO-BREAK SPACE
+(defvar char-set$printing (char-set-union char-set$whitespace char-set$graphic)) ; NO-BREAK SPACE
 
-(defvar char-set..blank
+(defvar char-set$blank
   (list->char-set (mapcar #'%code->char '(#x09 ; HORIZONTAL TABULATION
 				       #x20 ; SPACE
 				       #xA0)))) ; NO-BREAK SPACE
 
 
-(defvar char-set..iso-control
+(defvar char-set$iso-control
   (ucs-range->char-set! #x7F #xA0 t (ucs-range->char-set 0 32)))
 
-(defvar char-set..ascii (ucs-range->char-set 0 128))
+(defvar char-set$ascii (ucs-range->char-set 0 128))
 
 
 ;;; Porting & performance-tuning notes

@@ -1,4 +1,7 @@
-* SRFI-14: Character-set Library
+# SRFI 14 for CL: Character-set Library
+
+* https://srfi.schemers.org/srfi-14
+* License: MIT Scheme license
 
 - Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
